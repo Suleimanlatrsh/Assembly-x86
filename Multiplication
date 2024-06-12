@@ -1,0 +1,39 @@
+section .text
+    global _start
+
+_start:
+    ; Multiply 95 by 57
+    mov eax, 95           ; Move the value 95 into eax
+    mov ebx, 57           ; Move the value 57 into ebx
+    imul eax, ebx         ; Multiply eax by ebx, result stored in eax
+
+    ; Convert the result to ASCII characters
+    mov ebx, 10           ; Store the base 10 divisor
+    xor ecx, ecx          ; Clear ecx for storing character count
+    mov edi, buffer + 19  ; Load address of the end of buffer for storing ASCII result
+    mov byte [edi], 0     ; Null-terminate the string
+
+convert_loop:
+    xor edx, edx          ; Clear edx for division
+    div ebx               ; Divide eax by 10, quotient in eax, remainder in edx
+    add dl, '0'           ; Convert remainder to ASCII character
+    dec edi               ; Move to the previous position in buffer
+    mov [edi], dl         ; Store ASCII character in buffer
+    inc ecx               ; Increment character count
+    test eax, eax         ; Check if quotient is zero
+    jnz convert_loop      ; If not, continue conversion
+
+    ; Prepare for printing
+    mov edx, ecx          ; Load character count for sys_write
+    mov ecx, edi          ; Load address of the start of the ASCII result
+    mov ebx, 1            ; File descriptor 1: STDOUT
+    mov eax, 4            ; System call number for sys_write
+    int 80h               ; Call kernel
+
+    ; Exit the program
+    mov eax, 1            ; The system call for exit (sys_exit)
+    xor ebx, ebx          ; Exit with return code of 0 (no error)
+    int 80h               ; Call kernel
+
+section .bss
+    buffer resb 20        ; Buffer to store ASCII result

@@ -1,0 +1,145 @@
+section .data
+    msg db "Original String: "
+    len equ $-msg   ; Calculates msg string's length
+
+    msg2 db  0ah ,"Reversed string: " ; Adds newline before "Reversed String: "
+    lenMsg2 equ $ - msg2    ; Computes length of msg2 string
+    
+    msg3 db 0ah, "Uppercase String: "
+    lenMsg3 equ $-msg3    ; Determines length of msg3 string
+    
+    firstString db "team"
+    lenFirst equ $-firstString   ; Measures length of firstString
+    
+    SecondString db "mate"
+    lenSecond equ $-SecondString ; Measures length of SecondString
+
+    result db 50    ; Allocates 50 bytes for result buffer
+    
+
+section .text
+    global _start
+
+    ; Writes the second message to output
+    writeSecondMsg:
+        mov ecx, msg2
+        mov edx, lenMsg2
+        mov eax, 4
+        mov ebx, 1
+        int 80h
+        ret
+
+    ; Outputs the first message
+    writeFirstMsg:
+        mov ecx, msg
+        mov edx, len
+        mov eax, 4
+        mov ebx, 1
+        int 80h
+        ret
+        
+    ; Displays the third message
+    writeThirdMsg:
+        mov ecx, msg3
+        mov edx, lenMsg3
+        mov eax, 4
+        mov ebx, 1
+        int 80h
+        ret
+
+    ; Exits the program cleanly
+    exit_program:
+        mov eax, 1
+        xor ebx, ebx    ; Resets ebx to 0
+        int 80h
+
+    ; Copies characters from source to destination until count reaches zero
+    copy_loop:
+        mov al, [esi]       ; Retrieves character from source
+        mov [edi], al       ; Stores character in destination
+        inc esi             ; Advances source pointer
+        inc edi             ; Advances destination pointer
+        dec ecx             ; Reduces loop count
+        jnz copy_loop       ; Continues if count is not zero
+    ret
+
+    ; Sends the result string to output
+    print_result:
+        mov ecx, result
+        mov edx, lenFirst + lenSecond  ; Sets output length
+        mov eax, 4
+        mov ebx, 1
+        int 80h
+        ret
+
+    ; In-place string reversal
+    reverse_string_loop:
+        mov al, [esi]       ; Gets character from start of string
+        mov ah, [edi]       ; Gets character from end of string
+        mov [esi], ah       ; Swaps end character to start
+        mov [edi], al       ; Swaps start character to end
+        inc esi             ; Moves start pointer forward
+        dec edi             ; Moves end pointer backward
+        dec ecx             ; Decreases count
+        jnz reverse_string_loop
+        
+        ret
+    
+_start:
+    call writeFirstMsg
+
+    ; Prepares to copy firstString into result
+    mov esi, firstString  
+    mov edi, result       
+    mov ecx, lenFirst     ; Loop count set to firstString's length
+    call copy_loop
+    
+    ; Appends SecondString to result after firstString
+    mov esi, SecondString 
+    mov edi, result       
+    mov ecx, lenFirst     ; Moves edi to end of firstString in result
+    add edi, ecx
+    mov ecx, lenSecond    ; Loop count set to SecondString's length
+    call copy_loop
+    
+    call print_result  ; Outputs concatenated string
+    
+    call writeSecondMsg
+    
+    ; Sets up for reversing the concatenated string
+    mov esi, result
+    mov edi, result
+    dec edi              ; Adjusts edi to point at string's end
+    mov ecx, lenFirst + lenSecond  ; Count set to concatenated string length
+    call reverse_string_loop
+    call print_result
+    
+    call writeThirdMsg
+    
+    ; Converts concatenated and reversed string to uppercase
+    mov esi, result
+    convert_to_uppercase:
+        mov al, [esi]   ; Loads current character
+        cmp al, 0       ; Checks for end of string
+        je convert_done  ; Ends loop if end of string found
+
+        ; Checks if character is lowercase and converts if true
+        cmp al, 'a'
+        jb not_lowercase
+        cmp al, 'z'
+        ja not_lowercase
+
+        ; Converts lowercase to uppercase by adjusting ASCII value
+        sub al, 32
+
+not_lowercase:
+        mov [esi], al   ; Saves converted character
+
+        inc esi         ; Moves to next character
+        jmp convert_to_uppercase  ; Repeats for next character
+
+convert_done:
+    
+    call print_result
+
+    call exit_program

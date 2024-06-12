@@ -1,0 +1,98 @@
+section .data
+    msg db "Original String:"
+    len equ $-msg   ; Calculates the length of 'msg' by subtracting the start address from the current address
+
+    msg2 db  0ah ,"Reversed string:" ; Line break followed by the prefix for the reversed string
+
+    lenMsg2 equ $ - msg2  ; Determines the byte count for 'msg2'
+    
+    firstString db "Team "
+    lenFirst equ $-firstString   ; Computes the byte count for 'firstString'
+
+    SecondString db "Mate"
+    lenSecond equ $-SecondString ; Computes the byte count for 'SecondString'
+
+    result db 50    ; Reserve 50 bytes for the concatenated and reversed string
+    
+
+section .text
+    global _start
+    writeSecondMsg:
+        mov ecx, msg2           ; Point 'ecx' to the start of 'msg2'
+        mov edx, lenMsg2        ; Set 'edx' to the length of 'msg2'
+        mov eax, 4              ; Prepare syscall for write operation
+        mov ebx, 1              ; Standard output file descriptor
+        int 80h                 ; Invoke the kernel
+        ret
+
+    writeFirstMsg:
+        mov ecx, msg            ; Point 'ecx' to the start of 'msg'
+        mov edx, len            ; Set 'edx' to the length of 'msg'
+        mov eax, 4              ; Prepare syscall for write operation
+        mov ebx, 1              ; Standard output file descriptor
+        int 80h                 ; Invoke the kernel
+        ret
+
+    exit_program:
+        mov eax, 1              ; Prepare syscall for exit
+        xor ebx, ebx            ; Status code 0 for successful exit
+        int 80h                 ; Invoke the kernel
+
+    copy_loop:
+        mov al, [esi]           ; Fetch the next character from the source
+        mov [edi], al           ; Deposit the character into the destination
+        inc esi                 ; Advance the source pointer
+        inc edi                 ; Advance the destination pointer
+        dec ecx                 ; One less character to copy
+        jnz copy_loop           ; Continue if more characters remain
+    ret
+
+    print_result:
+        mov ecx, result         ; Set 'ecx' to point at the concatenated string
+        mov edx, lenFirst + lenSecond  ; 'edx' holds the total length of the combined strings
+        mov eax, 4              ; Prepare syscall for write operation
+        mov ebx, 1              ; Standard output file descriptor
+        int 80h                 ; Invoke the kernel
+        ret
+
+    reverse_string_loop:
+        mov al, [esi]           ; Fetch a character from the front
+        mov ah, [edi]           ; Fetch a character from the back
+        mov [esi], ah           ; Swap the front character to the back position
+        mov [edi], al           ; Swap the back character to the front position
+        inc esi                 ; Move forward in the string
+        dec edi                 ; Move backward in the string
+        dec ecx                 ; One less pair to swap
+        jnz reverse_string_loop ; Continue if more swaps are needed
+        
+        ret
+    
+_start:
+    call writeFirstMsg
+
+    mov esi, firstString  ; Initialize source to 'firstString'
+    mov edi, result       ; Initialize destination to 'result'
+    mov ecx, lenFirst     ; Counter set to the length of 'firstString'
+
+    call copy_loop        ; Execute the copy operation
+    
+    ; Update 'edi' to point to the next available position in 'result'
+    mov esi, SecondString ; Initialize source to 'SecondString'
+    add edi, ecx          ; Adjust destination pointer past the copied 'firstString'
+    mov ecx, lenSecond    ; Counter set to the length of 'SecondString'
+    
+    call copy_loop        ; Execute the copy operation
+    
+    call print_result     ; Display the concatenated string
+    
+    call writeSecondMsg   ; Introduce the reversed string section
+    
+    mov esi, result       ; Initialize source and destination to the start of 'result'
+    mov edi, result
+    add edi, lenFirst + lenSecond - 1 ; Set 'edi' to the last character of the concatenated string
+    mov ecx, lenFirst + lenSecond / 2 ; Only half the iterations needed for full reversal
+    
+    call reverse_string_loop  ; Execute the reversal operation
+    call print_result         ; Display the reversed string
+    
+    call exit_program         ; Terminate the program
